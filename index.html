@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>灾厄世界 - 卡牌对战 DEMO</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- 对手区域 -->
+        <div class="player-panel opponent">
+            <div class="info">
+                <span id="opp-win-points">胜点: 0</span>
+                <span id="opp-deck-count">牌库: 0</span>
+            </div>
+            <div class="hand" id="opp-hand"></div>
+        </div>
+
+        <!-- 战场区域 -->
+        <div class="board">
+            <div class="board-side player-side">
+                <div class="slot" id="slot-1" data-pos="1"><span class="label">1(主世界)</span></div>
+                <div class="slot" id="slot-3" data-pos="3"><span class="label">3</span></div>
+                <div class="slot" id="slot-5" data-pos="5"><span class="label">5</span></div>
+            </div>
+            <div class="center-info">
+                <div id="round-info">回合: 1</div>
+                <div id="dims-info">维度: 未知</div>
+                <div id="phase-info">阶段: 准备</div>
+            </div>
+            <div class="board-side opp-side">
+                <div class="slot" id="slot-2" data-pos="2"><span class="label">2</span></div>
+                <div class="slot" id="slot-4" data-pos="4"><span class="label">4</span></div>
+                <div class="slot" id="slot-6" data-pos="6"><span class="label">6</span></div>
+            </div>
+        </div>
+
+        <!-- 玩家区域 -->
+        <div class="player-panel player">
+            <div class="info">
+                <span id="my-win-points">胜点: 0</span>
+                <span id="my-deck-count">牌库: 0</span>
+                <span id="my-discard-count">弃牌: 0</span>
+            </div>
+            <div class="hand" id="my-hand"></div>
+            <button id="btn-pass" disabled>停止出牌</button>
+        </div>
+
+        <!-- 日志区域 -->
+        <div class="log-panel">
+            <h3>操作日志</h3>
+            <div id="log-content"></div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
