@@ -11,7 +11,6 @@ function runEffect(cardContext, triggerName) {
     if (!cardContext || !cardContext.effects || !cardContext.effects[triggerName]) return;
     const code = cardContext.effects[triggerName];
     
-    // 提供给 JSON 代码执行的强大 API 库
     const api = {
         log: (msg) => log(`[效果] ${msg}`, "success"),
         modStat: (card, stat, val) => { if(card && card.stats[stat] !== undefined && typeof card.stats[stat] === 'number') card.stats[stat] += val; },
@@ -31,7 +30,6 @@ function runEffect(cardContext, triggerName) {
                     let card = deck.pop();
                     hand.push(card);
                     drawnCards.push(card);
-                    // 触发 [抽取] 效果
                     runEffect(card, "onDraw");
                 }
             }
@@ -61,7 +59,6 @@ function runEffect(cardContext, triggerName) {
             }
         },
         addCardToOpponentHand: (owner, cardId) => {
-            // owner是自己，所以对手是相反的
             let oppOwner = owner === 'player' ? 'opp' : 'player';
             api.addCardToHand(oppOwner, cardId);
         }
@@ -70,7 +67,8 @@ function runEffect(cardContext, triggerName) {
     try {
         const func = new Function('thisCard', 'api', code);
         func(cardContext, api);
-        renderBoard(); renderHands();
+        renderBoard(); 
+        renderHands();
     } catch (e) {
         log(`效果执行报错: ${e.message}`, "danger");
         console.error(e);
@@ -84,6 +82,7 @@ async function loadDataAndStart() {
         initGame();
     } catch (error) {
         document.getElementById('log-content').innerHTML = `<div class="log-danger">读取失败！请确保你使用了 Live Server 且 cards.json 存在。</div>`;
+        console.error(error);
     }
 }
 
@@ -132,7 +131,7 @@ function enablePlayerPlay() {
             slot.classList.add('active-drop');
             slot.onclick = () => {
                 let idx = state.myHand.findIndex(c => c.selected);
-                if (idx === -1) { log("请先点击手牌选中！", "danger"); return; }
+                if (idx === -1) { log("请先点击下方手牌选中，再点击战场放置！", "danger"); return; }
                 let card = state.myHand.splice(idx, 1)[0];
                 state.board[pos] = { card: card, owner: 'player', faceUp: (pos === 1) };
                 renderBoard(); renderHands(); checkTurnEnd();
@@ -200,7 +199,6 @@ async function startRevealPhase() {
             state.board[i].faceUp = true;
             renderBoard();
             log(`翻开 ${i} 号位：${state.board[i].card.name}`);
-            // 核心：翻牌触发 JSON 里的 [显现] 逻辑
             runEffect(state.board[i].card, "onReveal");
             await delay(800);
         }
@@ -241,48 +239,54 @@ function settleRound() {
 }
 
 function discardPhase() {
-    // 简化处理弃牌和保留 (暂未实现玩家主动选择)
     state.myDiscard.push(...state.myHand.splice(1));
     state.oppDiscard.push(...state.oppHand.splice(1));
     state.round++; startRound();
 }
 
-// --- 渲染 UI ---
-function renderBoard() {
-    document.querySelectorAll('.slot').forEach(slot => {
-        let pos = parseInt(slot.dataset.pos);
-        let data = state.board[pos];
-        if (data) slot.innerHTML = createCardHTML(data.card, data.faceUp, true);
-    });
-}
-
+// === 修复了 DOM 抓取的核心渲染逻辑 ===
 function renderHands() {
     const myHandDiv = document.getElementById('my-hand');
     myHandDiv.innerHTML = '';
     state.myHand.forEach((card) => {
-        let el = document.createElement('div');
-        el.innerHTML = createCardHTML(card, true, false);
-        let cardEl = el.firstChild;
-        cardEl.onclick = () => {
+        let cardEl = document.createElement('div');
+        cardEl.innerHTML = createCardHTML(card, true, false);
+        
+        // 兼容性获取：确保拿到的是 Element 而不是 TextNode
+        let actualCardNode = cardEl.firstElementChild; 
+        if (!actualCardNode) return;
+
+        actualCardNode.onclick = () => {
             if (state.phase !== "PLAY" || !state.isMyTurn) return;
             state.myHand.forEach(c => c.selected = false);
             card.selected = true;
-            renderHands();
+            renderHands(); // 点击后重新渲染高亮
         };
-        if (card.selected) cardEl.style.border = "2px solid var(--gold)";
-        myHandDiv.appendChild(cardEl);
+        if (card.selected) actualCardNode.style.border = "2px solid var(--gold)";
+        myHandDiv.appendChild(actualCardNode);
     });
 
     const oppHandDiv = document.getElementById('opp-hand');
     oppHandDiv.innerHTML = '';
     state.oppHand.forEach(() => {
-        let el = document.createElement('div');
-        el.innerHTML = createCardHTML({name: "未知"}, false, false);
-        oppHandDiv.appendChild(el.firstChild);
+        let cardEl = document.createElement('div');
+        cardEl.innerHTML = createCardHTML({name: "未知"}, false, false);
+        oppHandDiv.appendChild(cardEl.firstElementChild);
     });
+    
     document.getElementById('my-deck-count').innerText = `牌库: ${state.myDeck.length}`;
     document.getElementById('opp-deck-count').innerText = `牌库: ${state.oppDeck.length}`;
     document.getElementById('my-discard-count').innerText = `弃牌: ${state.myDiscard.length}`;
+}
+
+function renderBoard() {
+    document.querySelectorAll('.slot').forEach(slot => {
+        let pos = parseInt(slot.dataset.pos);
+        let data = state.board[pos];
+        if (data) {
+            slot.innerHTML = `<span class="label">${pos}</span>` + createCardHTML(data.card, data.faceUp, true);
+        }
+    });
 }
 
 function createCardHTML(card, faceUp, inSlot) {
@@ -290,7 +294,7 @@ function createCardHTML(card, faceUp, inSlot) {
     let stats = card.stats || {};
     return `
     <div class="card ${inSlot?'in-slot':''}">
-        <div class="card-header">${card.name}</div>
+        <div class="card-header">${card.name || '未知'}</div>
         <div class="card-stats">
             <div>混<span>${stats.chaos}</span></div>
             <div>荒<span>${stats.barren}</span></div>
@@ -298,16 +302,20 @@ function createCardHTML(card, faceUp, inSlot) {
             <div>厄<span>${stats.calamity}</span></div>
         </div>
         <div class="card-text">${card.text || ''}</div>
-        <div class="card-footer">${card.level}</div>
+        <div class="card-footer">${card.level || ''}</div>
     </div>`;
 }
 
 function drawPhase() {
     while (state.myHand.length < 5 && state.myDeck.length > 0) {
-        let c = state.myDeck.pop(); state.myHand.push(c); runEffect(c, "onDraw");
+        let c = state.myDeck.pop(); 
+        state.myHand.push(c); 
+        runEffect(c, "onDraw");
     }
     while (state.oppHand.length < 5 && state.oppDeck.length > 0) {
-        let c = state.oppDeck.pop(); state.oppHand.push(c); runEffect(c, "onDraw");
+        let c = state.oppDeck.pop(); 
+        state.oppHand.push(c); 
+        runEffect(c, "onDraw");
     }
 }
 
