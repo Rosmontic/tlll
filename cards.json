@@ -1,0 +1,90 @@
+[
+  {
+    "id": "A4",
+    "name": "蚁穴",
+    "level": "崩坏级",
+    "stats": { "chaos": 2, "barren": 3, "disqual": 4, "calamity": 3 },
+    "tags": ["[显现]"],
+    "text": "此牌荒芜-1，此牌前1张卡牌荒芜+2"
+  },
+  {
+    "id": "A23",
+    "name": "饥馑",
+    "level": "灾祸级",
+    "stats": { "chaos": 2, "barren": 5, "disqual": 3, "calamity": 3 },
+    "tags": ["[显现]"],
+    "text": "场上所有其它明牌荒芜+2"
+  },
+  {
+    "id": "B9",
+    "name": "蜂巢",
+    "level": "灾祸级",
+    "stats": { "chaos": 4, "barren": 0, "disqual": 1, "calamity": 1 },
+    "tags": ["[保留]"],
+    "text": "此牌混沌+1"
+  },
+  {
+    "id": "B9.1",
+    "name": "蜜饵",
+    "level": "灾祸级",
+    "stats": { "chaos": 5, "barren": -1, "disqual": 2, "calamity": 1 },
+    "tags": ["[显现]"],
+    "text": "抽取3，生成1张B9.2-蜜獾洗入牌库"
+  },
+  {
+    "id": "B9.2",
+    "name": "蜜獾",
+    "level": "崩坏级",
+    "stats": { "chaos": 5, "barren": 3, "disqual": 4, "calamity": 4 },
+    "tags": ["[抽取]", "[衍生]"],
+    "text": "随机丢弃3"
+  },
+  {
+    "id": "C31",
+    "name": "椛",
+    "level": "萌芽级",
+    "stats": { "chaos": 2, "barren": 1, "disqual": 1, "calamity": 2 },
+    "tags": ["[显现]"],
+    "text": "将1张'C31-椛'置入对手手牌"
+  },
+  {
+    "id": "C32",
+    "name": "雨季",
+    "level": "萌芽级",
+    "stats": { "chaos": 1, "barren": 2, "disqual": 2, "calamity": 1 },
+    "tags": ["[显现]"],
+    "text": "抽1张牌，该牌失格+2"
+  },
+  {
+    "id": "Y2",
+    "name": "镜子",
+    "level": "隐秘级",
+    "stats": { "chaos": 0, "barren": 0, "disqual": 0, "calamity": 0 },
+    "tags": ["[显现]"],
+    "text": "本回合中，获取前一张卡牌的属性数值"
+  },
+  {
+    "id": "A66",
+    "name": "增殖",
+    "level": "崩坏级",
+    "stats": { "chaos": 3, "barren": 3, "disqual": 1, "calamity": 2 },
+    "tags": ["[显现]"],
+    "text": "获取1张此牌当前数值的复制"
+  },
+  {
+    "id": "Y96",
+    "name": "千面",
+    "level": "崩坏级",
+    "stats": { "chaos": 4, "barren": 0, "disqual": 0, "calamity": 5 },
+    "tags": ["{边界}", "[显现]"],
+    "text": "交换所有其它里世界明牌的混沌和随机另1属性"
+  },
+  {
+    "id": "C1",
+    "name": "空天",
+    "level": "终末级",
+    "stats": { "chaos": 0, "barren": 0, "disqual": 0, "calamity": 0 },
+    "tags": ["{中枢}", "[主导]"],
+    "text": "此牌的属性无法增加"
+  }
+]
