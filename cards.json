@@ -5,7 +5,10 @@
     "level": "崩坏级",
     "stats": { "chaos": 2, "barren": 3, "disqual": 4, "calamity": 3 },
     "tags": ["[显现]"],
-    "text": "此牌荒芜-1，此牌前1张卡牌荒芜+2"
+    "text": "荒芜-1，前1张卡牌荒芜+2",
+    "effects": {
+      "onReveal": "api.modStat(thisCard, 'barren', -1); const prevCard = api.getPrevCard(thisCard.pos); if(prevCard) { api.modStat(prevCard, 'barren', 2); } api.log(`蚁穴：自身荒芜-1，前一张卡荒芜+2`);"
+    }
   },
   {
     "id": "A23",
@@ -13,7 +16,10 @@
     "level": "灾祸级",
     "stats": { "chaos": 2, "barren": 5, "disqual": 3, "calamity": 3 },
     "tags": ["[显现]"],
-    "text": "场上所有其它明牌荒芜+2"
+    "text": "场上所有其它明牌荒芜+2",
+    "effects": {
+      "onReveal": "api.getAllFaceUpCards().forEach(c => { if(c.id !== thisCard.id) { api.modStat(c, 'barren', 2); } }); api.log(`饥馑：场上其它明牌荒芜+2`);"
+    }
   },
   {
     "id": "B9",
@@ -21,7 +27,10 @@
     "level": "灾祸级",
     "stats": { "chaos": 4, "barren": 0, "disqual": 1, "calamity": 1 },
     "tags": ["[保留]"],
-    "text": "此牌混沌+1"
+    "text": "此牌混沌+1",
+    "effects": {
+      "onKeep": "api.modStat(thisCard, 'chaos', 1); api.log(`蜂巢：保留触发，混沌+1`);"
+    }
   },
   {
     "id": "B9.1",
@@ -29,7 +38,10 @@
     "level": "灾祸级",
     "stats": { "chaos": 5, "barren": -1, "disqual": 2, "calamity": 1 },
     "tags": ["[显现]"],
-    "text": "抽取3，生成1张B9.2-蜜獾洗入牌库"
+    "text": "抽取3，生成1张B9.2-蜜獾洗入牌库",
+    "effects": {
+      "onReveal": "api.draw(thisCard.owner, 3); api.addCardToDeck(thisCard.owner, 'B9.2'); api.log(`蜜饵：抽3张牌，并洗入一张蜜獾`);"
+    }
   },
   {
     "id": "B9.2",
@@ -37,7 +49,10 @@
     "level": "崩坏级",
     "stats": { "chaos": 5, "barren": 3, "disqual": 4, "calamity": 4 },
     "tags": ["[抽取]", "[衍生]"],
-    "text": "随机丢弃3"
+    "text": "随机丢弃3",
+    "effects": {
+      "onDraw": "api.discardRandom(thisCard.owner, 3); api.log(`蜜獾：被抽取，随机丢弃3张手牌`);"
+    }
   },
   {
     "id": "C31",
@@ -45,7 +60,10 @@
     "level": "萌芽级",
     "stats": { "chaos": 2, "barren": 1, "disqual": 1, "calamity": 2 },
     "tags": ["[显现]"],
-    "text": "将1张'C31-椛'置入对手手牌"
+    "text": "将1张'C31-椛'置入对手手牌",
+    "effects": {
+      "onReveal": "api.addCardToOpponentHand(thisCard.owner, 'C31'); api.log(`椛：塞给对手一张椛`);"
+    }
   },
   {
     "id": "C32",
@@ -53,7 +71,10 @@
     "level": "萌芽级",
     "stats": { "chaos": 1, "barren": 2, "disqual": 2, "calamity": 1 },
     "tags": ["[显现]"],
-    "text": "抽1张牌，该牌失格+2"
+    "text": "抽1张牌，该牌失格+2",
+    "effects": {
+      "onReveal": "const drawn = api.draw(thisCard.owner, 1); if(drawn && drawn.length > 0) { api.modStat(drawn[0], 'disqual', 2); } api.log(`雨季：抽1张牌，失格+2`);"
+    }
   },
   {
     "id": "Y2",
@@ -61,7 +82,10 @@
     "level": "隐秘级",
     "stats": { "chaos": 0, "barren": 0, "disqual": 0, "calamity": 0 },
     "tags": ["[显现]"],
-    "text": "本回合中，获取前一张卡牌的属性数值"
+    "text": "获取前一张卡牌的属性数值",
+    "effects": {
+      "onReveal": "const prev = api.getPrevCard(thisCard.pos); if(prev) { thisCard.stats = Object.assign({}, prev.stats); api.log(`镜子：复制了前一张卡的属性`); }"
+    }
   },
   {
     "id": "A66",
@@ -69,7 +93,10 @@
     "level": "崩坏级",
     "stats": { "chaos": 3, "barren": 3, "disqual": 1, "calamity": 2 },
     "tags": ["[显现]"],
-    "text": "获取1张此牌当前数值的复制"
+    "text": "获取1张此牌当前数值的复制",
+    "effects": {
+      "onReveal": "api.addCardToHand(thisCard.owner, thisCard.id); api.log(`增殖：获取了1张复制`);"
+    }
   },
   {
     "id": "Y96",
@@ -77,7 +104,10 @@
     "level": "崩坏级",
     "stats": { "chaos": 4, "barren": 0, "disqual": 0, "calamity": 5 },
     "tags": ["{边界}", "[显现]"],
-    "text": "交换所有其它里世界明牌的混沌和随机另1属性"
+    "text": "交换所有其它里世界明牌的混沌和随机另1属性",
+    "effects": {
+      "onReveal": "const others = api.getOtherInnerWorldFaceUpCards(thisCard.pos); const dims = ['barren', 'disqual', 'calamity']; others.forEach(c => { const randDim = dims[Math.floor(Math.random() * dims.length)]; const temp = c.stats.chaos; c.stats.chaos = c.stats[randDim]; c.stats[randDim] = temp; }); api.log(`千面：交换了其它里世界明牌的属性`);"
+    }
   },
   {
     "id": "C1",
@@ -85,6 +115,7 @@
     "level": "终末级",
     "stats": { "chaos": 0, "barren": 0, "disqual": 0, "calamity": 0 },
     "tags": ["{中枢}", "[主导]"],
-    "text": "此牌的属性无法增加"
+    "text": "所有维度均纳入计数",
+    "effects": {}
   }
 ]
