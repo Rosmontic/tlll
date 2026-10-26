@@ -1,0 +1,121 @@
+:root {
+    --bg-color: #0d0d12;
+    --panel-bg: #1a1a24;
+    --player-color: #2c3e50; /* 偏蓝紫 */
+    --opp-color: #4a1c1c; /* 偏暗红 */
+    --text-main: #dcdcdc;
+    --gold: #f1c40f;
+    --dim: #888;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none;}
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#game-container {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    grid-template-rows: auto 1fr auto;
+    width: 100%;
+    max-width: 1400px;
+    height: 100%;
+    gap: 10px;
+    padding: 10px;
+}
+
+.player-panel {
+    grid-column: 1;
+    background: var(--panel-bg);
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+}
+.opponent { grid-row: 1; border-top: 3px solid var(--opp-color); }
+.player { grid-row: 3; border-bottom: 3px solid var(--player-color); }
+
+.info { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
+.hand { display: flex; gap: 10px; flex-wrap: wrap; min-height: 140px; }
+
+/* 战场 */
+.board {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="none"/><path d="M0 100 L100 0" stroke="%23222" stroke-width="1"/></svg>');
+}
+.board-side { display: flex; gap: 20px; }
+.center-info { text-align: center; color: var(--gold); font-weight: bold; letter-spacing: 2px;}
+
+.slot {
+    width: 110px; height: 160px;
+    border: 2px dashed #444;
+    border-radius: 8px;
+    display: flex; justify-content: center; align-items: center;
+    position: relative;
+    transition: all 0.3s;
+}
+.slot.active-drop { border-color: var(--gold); box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); cursor: pointer; }
+.slot .label { position: absolute; top: 5px; left: 5px; color: #444; font-size: 12px; }
+.player-side .slot { border-bottom: 4px solid var(--player-color); }
+.opp-side .slot { border-top: 4px solid var(--opp-color); }
+
+/* 卡牌样式 */
+.card {
+    width: 100px; height: 150px;
+    border-radius: 6px;
+    background: #222;
+    border: 1px solid #555;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.8); }
+.card.in-slot { width: 100%; height: 100%; cursor: default; }
+.card.in-slot:hover { transform: none; box-shadow: none; }
+
+.card-header { padding: 4px; font-size: 12px; background: rgba(0,0,0,0.5); text-align: center; font-weight: bold; }
+.card-stats { display: grid; grid-template-columns: 1fr 1fr; font-size: 10px; padding: 5px; color: var(--dim); gap: 2px;}
+.card-stats div { background: #111; padding: 2px; text-align: center; border-radius: 2px; }
+.card-stats span { color: #fff; font-weight: bold; margin-left: 2px; }
+.card-text { font-size: 10px; padding: 5px; flex-grow: 1; overflow: hidden; }
+.card-footer { font-size: 10px; text-align: center; background: rgba(0,0,0,0.3); padding: 2px; }
+
+/* 卡牌暗面 */
+.card.face-down {
+    background: repeating-linear-gradient(45deg, #111, #111 10px, #222 10px, #222 20px);
+    border-color: #333;
+}
+.card.face-down > * { display: none; }
+.card.face-down::after { content: '?'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; color: #444; }
+
+/* 日志面板 */
+.log-panel {
+    grid-column: 2; grid-row: 1 / span 3;
+    background: var(--panel-bg); border: 1px solid #333; border-radius: 8px; padding: 10px;
+    display: flex; flex-direction: column;
+}
+#log-content { flex-grow: 1; overflow-y: auto; font-size: 12px; color: #aaa; line-height: 1.6; }
+.log-highlight { color: var(--gold); font-weight: bold; }
+.log-danger { color: #e74c3c; }
+.log-success { color: #2ecc71; }
+
+button {
+    margin-top: 10px; padding: 10px;
+    background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; cursor: pointer;
+}
+button:not(:disabled):hover { background: #444; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
