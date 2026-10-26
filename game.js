@@ -1,45 +1,89 @@
-// --- 1. 全局变量与常量 ---
-let CARDS_DB = []; // 动态加载
+let CARDS_DB = [];
 const DIMENSIONS = ["chaos", "barren", "disqual", "calamity"];
 const DIM_NAMES = { chaos: "混沌", barren: "荒芜", disqual: "失格", calamity: "厄孳" };
-const LEVEL_LIMIT = {
-    1: ["纯净级", "萌芽级", "灾祸级", "隐秘级"], 
-    2: ["纯净级", "萌芽级", "灾祸级", "隐秘级"], 
-    3: ["纯净级", "萌芽级", "灾祸级", "隐秘级"],
-    4: ["纯净级", "萌芽级", "灾祸级", "崩坏级", "隐秘级"], 
-    5: ["纯净级", "萌芽级", "灾祸级", "崩坏级", "隐秘级"], 
-    6: ["纯净级", "萌芽级", "灾祸级", "崩坏级", "隐秘级"],
-    7: ["纯净级", "萌芽级", "灾祸级", "崩坏级", "终末级", "隐秘级"], 
-    8: ["纯净级", "萌芽级", "灾祸级", "崩坏级", "终末级", "隐秘级"], 
-    9: ["纯净级", "萌芽级", "灾祸级", "崩坏级", "终末级", "隐秘级"]
-};
+const LEVEL_LIMIT = { 1:["纯净级","萌芽级","灾祸级","隐秘级"], 2:["纯净级","萌芽级","灾祸级","隐秘级"], 3:["纯净级","萌芽级","灾祸级","隐秘级"], 4:["纯净级","萌芽级","灾祸级","崩坏级","隐秘级"], 5:["纯净级","萌芽级","灾祸级","崩坏级","隐秘级"], 6:["纯净级","萌芽级","灾祸级","崩坏级","隐秘级"], 7:["纯净级","萌芽级","灾祸级","崩坏级","终末级","隐秘级"], 8:["纯净级","萌芽级","灾祸级","崩坏级","终末级","隐秘级"], 9:["纯净级","萌芽级","灾祸级","崩坏级","终末级","隐秘级"] };
 
-// --- 2. 游戏状态 ---
-let state = {
-    round: 1,
-    myScore: 0, oppScore: 0,
-    myDeck: [], oppDeck: [], myDiscard: [], oppDiscard: [],
-    myHand: [], oppHand: [],
-    board: {}, 
-    activeDims: [], 
-    phase: "DRAW", 
-    isMyTurn: true,
-    myPassed: false, oppPassed: false
-};
-
+let state = { round: 1, myScore: 0, oppScore: 0, myDeck: [], oppDeck: [], myDiscard: [], oppDiscard: [], myHand: [], oppHand: [], board: {}, activeDims: [], phase: "DRAW", isMyTurn: true, myPassed: false, oppPassed: false };
 const delay = ms => new Promise(res => setTimeout(res, ms));
-const rand = n => Math.floor(Math.random() * n);
 
-// --- 3. 加载 JSON 并初始化 ---
+// === 【核心引擎】动态执行 JSON 代码 ===
+function runEffect(cardContext, triggerName) {
+    if (!cardContext || !cardContext.effects || !cardContext.effects[triggerName]) return;
+    const code = cardContext.effects[triggerName];
+    
+    // 提供给 JSON 代码执行的强大 API 库
+    const api = {
+        log: (msg) => log(`[效果] ${msg}`, "success"),
+        modStat: (card, stat, val) => { if(card && card.stats[stat] !== undefined && typeof card.stats[stat] === 'number') card.stats[stat] += val; },
+        getPrevCard: (pos) => { for(let i = pos-1; i >= 1; i--) { if(state.board[i]) return state.board[i].card; } return null; },
+        getAllFaceUpCards: () => Object.values(state.board).filter(b => b.faceUp).map(b => b.card),
+        getOtherInnerWorldFaceUpCards: (myPos) => {
+            return Object.entries(state.board)
+                .filter(([pos, b]) => b.faceUp && parseInt(pos) >= 2 && parseInt(pos) <= 6 && parseInt(pos) !== myPos)
+                .map(([pos, b]) => b.card);
+        },
+        draw: (owner, num) => {
+            let deck = owner === 'player' ? state.myDeck : state.oppDeck;
+            let hand = owner === 'player' ? state.myHand : state.oppHand;
+            let drawnCards = [];
+            for(let i=0; i<num; i++) { 
+                if(deck.length > 0) {
+                    let card = deck.pop();
+                    hand.push(card);
+                    drawnCards.push(card);
+                    // 触发 [抽取] 效果
+                    runEffect(card, "onDraw");
+                }
+            }
+            return drawnCards;
+        },
+        discardRandom: (owner, num) => {
+            let hand = owner === 'player' ? state.myHand : state.oppHand;
+            let discard = owner === 'player' ? state.myDiscard : state.oppDiscard;
+            for(let i=0; i<num; i++) {
+                if(hand.length === 0) break;
+                let idx = Math.floor(Math.random() * hand.length);
+                discard.push(hand.splice(idx, 1)[0]);
+            }
+        },
+        addCardToDeck: (owner, cardId) => {
+            let cardData = CARDS_DB.find(c => c.id === cardId);
+            if(cardData) {
+                let deck = owner === 'player' ? state.myDeck : state.oppDeck;
+                deck.push(JSON.parse(JSON.stringify(cardData)));
+            }
+        },
+        addCardToHand: (owner, cardId) => {
+            let cardData = CARDS_DB.find(c => c.id === cardId);
+            if(cardData) {
+                let hand = owner === 'player' ? state.myHand : state.oppHand;
+                hand.push(JSON.parse(JSON.stringify(cardData)));
+            }
+        },
+        addCardToOpponentHand: (owner, cardId) => {
+            // owner是自己，所以对手是相反的
+            let oppOwner = owner === 'player' ? 'opp' : 'player';
+            api.addCardToHand(oppOwner, cardId);
+        }
+    };
+
+    try {
+        const func = new Function('thisCard', 'api', code);
+        func(cardContext, api);
+        renderBoard(); renderHands();
+    } catch (e) {
+        log(`效果执行报错: ${e.message}`, "danger");
+        console.error(e);
+    }
+}
+
 async function loadDataAndStart() {
     try {
         const response = await fetch('./cards.json');
-        if (!response.ok) throw new Error("网络请求失败");
         CARDS_DB = await response.json();
         initGame();
     } catch (error) {
-        console.error(error);
-        document.getElementById('log-content').innerHTML = `<div class="log-danger">读取 cards.json 失败！<br>请勿直接双击 HTML，请使用 VS Code 的 Live Server 插件或本地服务器运行。</div>`;
+        document.getElementById('log-content').innerHTML = `<div class="log-danger">读取失败！请确保你使用了 Live Server 且 cards.json 存在。</div>`;
     }
 }
 
@@ -47,32 +91,23 @@ function initGame() {
     let pool = [];
     CARDS_DB.forEach(c => { for(let i=0;i<3;i++) pool.push(JSON.parse(JSON.stringify(c))); });
     pool.sort(() => Math.random() - 0.5);
-    state.myDeck = pool.slice(0, 15);
-    state.oppDeck = pool.slice(15, 30);
-    
-    document.getElementById('my-deck-count').innerText = `牌库: ${state.myDeck.length}`;
-    document.getElementById('opp-deck-count').innerText = `牌库: ${state.oppDeck.length}`;
-    
-    log("数据加载成功！游戏开始。先手由玩家担任。");
+    state.myDeck = pool.slice(0, 15); state.oppDeck = pool.slice(15, 30);
+    log("游戏开始！");
     startRound();
 }
 
-// --- 4. 回合流程 ---
 async function startRound() {
     document.getElementById('round-info').innerText = `回合: ${state.round}`;
-    state.board = {};
-    state.myPassed = false; state.oppPassed = false;
+    state.board = {}; state.myPassed = false; state.oppPassed = false;
     document.querySelectorAll('.slot').forEach(s => s.innerHTML = `<span class="label">${s.dataset.pos}</span>`);
     document.querySelectorAll('.slot').forEach(s => s.classList.remove('active-drop'));
-
-    log(`--- 第 ${state.round} 回合 ---`);
-    drawPhase();
-    renderHands();
+    
+    drawPhase(); renderHands();
 
     let dims = [...DIMENSIONS].sort(() => Math.random() - 0.5).slice(0, 2);
     state.activeDims = dims;
     document.getElementById('dims-info').innerText = `维度: ${DIM_NAMES[dims[0]]} / ${DIM_NAMES[dims[1]]}`;
-    log(`随机维度：${DIM_NAMES[dims[0]]}、${DIM_NAMES[dims[1]]}`);
+    log(`--- 第 ${state.round} 回合，维度：${DIM_NAMES[dims[0]]} / ${DIM_NAMES[dims[1]]} ---`);
 
     state.phase = "PLAY";
     document.getElementById('phase-info').innerText = `阶段: 出牌`;
@@ -80,45 +115,30 @@ async function startRound() {
     
     state.isMyTurn = (state.round % 2 !== 0); 
     if (state.isMyTurn) {
-        log("你获得了先手。请出牌 (1,3,5号位)。");
+        log("你是先手 (1,3,5号位)。");
         enablePlayerPlay();
     } else {
-        log("对手获得了先手。等待对手出牌...");
-        await oppPlayTurn(true);
-        startMyTurn();
+        log("对手是先手。");
+        await oppPlayTurn(true); 
+        startMyTurn(); 
     }
 }
 
-// --- 5. 玩家操作 ---
 function enablePlayerPlay() {
     document.querySelectorAll('.slot').forEach(slot => {
         let pos = parseInt(slot.dataset.pos);
         let isMyPos = (state.isMyTurn && [1,3,5].includes(pos)) || (!state.isMyTurn && [2,4,6].includes(pos));
         if (isMyPos && !state.board[pos]) {
             slot.classList.add('active-drop');
-            slot.onclick = () => playCardToSlot(pos);
-        } else {
-            slot.onclick = null;
-        }
+            slot.onclick = () => {
+                let idx = state.myHand.findIndex(c => c.selected);
+                if (idx === -1) { log("请先点击手牌选中！", "danger"); return; }
+                let card = state.myHand.splice(idx, 1)[0];
+                state.board[pos] = { card: card, owner: 'player', faceUp: (pos === 1) };
+                renderBoard(); renderHands(); checkTurnEnd();
+            };
+        } else slot.onclick = null;
     });
-}
-
-function playCardToSlot(pos) {
-    let selectedIndex = state.myHand.findIndex(c => c.selected);
-    if (selectedIndex === -1) return;
-    
-    let card = state.myHand[selectedIndex];
-    if (!LEVEL_LIMIT[Math.min(state.round, 9)].includes(card.level)) {
-        log("该卡牌等级不符合当前回合规则！", "danger");
-        return;
-    }
-    
-    state.myHand.splice(selectedIndex, 1);
-    state.board[pos] = { card: card, owner: 'player', faceUp: (pos === 1) }; 
-    
-    renderBoard();
-    renderHands();
-    checkTurnEnd();
 }
 
 document.getElementById('btn-pass').onclick = () => {
@@ -126,14 +146,9 @@ document.getElementById('btn-pass').onclick = () => {
     document.getElementById('btn-pass').disabled = true;
     document.querySelectorAll('.slot').forEach(s => s.classList.remove('active-drop'));
     log("你选择了停止出牌。");
-    
-    if (state.oppPassed) { startRevealPhase(); }
-    else if (state.isMyTurn) { 
-        state.isMyTurn = false;
-        oppPlayTurn(false);
-    } else {
-        startRevealPhase();
-    }
+    if (state.oppPassed) startRevealPhase();
+    else if (state.isMyTurn) { state.isMyTurn = false; oppPlayTurn(false); }
+    else startRevealPhase();
 };
 
 async function startMyTurn() {
@@ -146,46 +161,34 @@ async function startMyTurn() {
 
 function checkTurnEnd() {
     if (state.isMyTurn) {
-        if (state.myHand.length === 0 || [1,3,5].every(p => state.board[p])) {
-            document.getElementById('btn-pass').click(); 
-        }
+        if (state.myHand.length === 0 || [1,3,5].every(p => state.board[p])) document.getElementById('btn-pass').click(); 
     } else {
-        if (state.oppHand.length === 0 || [2,4,6].every(p => state.board[p])) {
-            state.oppPassed = true;
-            startRevealPhase();
-        }
+        if (state.oppHand.length === 0 || [2,4,6].every(p => state.board[p])) { state.oppPassed = true; startRevealPhase(); }
     }
 }
 
-// --- 6. AI 操作 ---
 async function oppPlayTurn(isFirst) {
     await delay(800);
-    const allowedLevels = LEVEL_LIMIT[Math.min(state.round, 9)];
-    let validCards = state.oppHand.filter(c => allowedLevels.includes(c.level));
+    let validCards = state.oppHand.filter(c => LEVEL_LIMIT[Math.min(state.round, 9)].includes(c.level));
     let availablePos = isFirst ? [2,4,6] : [1,3,5].filter(p => !state.board[p]); 
 
     for (let pos of availablePos) {
         if (validCards.length === 0) break;
-        let idx = rand(validCards.length);
+        let idx = Math.floor(Math.random() * validCards.length);
         let card = validCards.splice(idx, 1)[0];
         let realIdx = state.oppHand.findIndex(c => c.id === card.id);
         state.oppHand.splice(realIdx, 1);
-        
         state.board[pos] = { card: card, owner: 'opp', faceUp: (pos === 1) };
         log(`对手在 ${pos} 号位放置了一张卡牌。`);
-        renderBoard();
-        renderHands();
+        renderBoard(); renderHands();
         await delay(600);
     }
-    
     state.oppPassed = true;
-    log("对手停止了出牌。");
     if (state.myPassed) startRevealPhase();
     else if (!isFirst) startMyTurn();
     else startMyTurn();
 }
 
-// --- 7. 拼点与结算 ---
 async function startRevealPhase() {
     state.phase = "REVEAL";
     document.getElementById('phase-info').innerText = `阶段: 拼点`;
@@ -196,13 +199,10 @@ async function startRevealPhase() {
         if (state.board[i] && !state.board[i].faceUp) {
             state.board[i].faceUp = true;
             renderBoard();
-            log(`翻开 ${i} 号位卡牌：${state.board[i].card.name}`);
-            let stats = state.board[i].card.stats;
-            for(let k in stats) {
-                if (stats[k] === '?') stats[k] = rand(6)+1;
-                if (stats[k] === '-') stats[k] = 0;
-            }
-            await delay(600);
+            log(`翻开 ${i} 号位：${state.board[i].card.name}`);
+            // 核心：翻牌触发 JSON 里的 [显现] 逻辑
+            runEffect(state.board[i].card, "onReveal");
+            await delay(800);
         }
     }
     await delay(500);
@@ -212,95 +212,47 @@ async function startRevealPhase() {
 function settleRound() {
     state.phase = "SETTLE";
     document.getElementById('phase-info').innerText = `阶段: 结算`;
-    log("--- 开始结算 ---");
-
     let mainCard = state.board[1] ? state.board[1].card : null;
     let isFourDim = mainCard && mainCard.tags.includes("[主导]") && state.board[1].faceUp;
     
-    let myScore = 0, oppScore = 0;
-    let calcLog = "";
+    let myScore = 0, oppScore = 0, calcLog = "";
+    let calcDims = isFourDim ? DIMENSIONS : state.activeDims;
 
-    if (isFourDim) {
-        log("触发 [主导]！所有四维均计入计分！");
-        for (let d of DIMENSIONS) {
-            let mVal = mainCard.stats[d] || 0;
-            let mySum = (state.board[3]?.card.stats[d]||0) + (state.board[5]?.card.stats[d]||0);
-            let oppSum = (state.board[2]?.card.stats[d]||0) + (state.board[4]?.card.stats[d]||0) + (state.board[6]?.card.stats[d]||0);
-            myScore += mVal * mySum;
-            oppScore += mVal * oppSum;
-            calcLog += `${DIM_NAMES[d]}(${mVal}×${mySum}) + `;
-        }
-    } else {
-        if(!mainCard) log("没有主世界，分数均为0。");
-        else {
-            for (let d of state.activeDims) {
-                let mVal = mainCard.stats[d] || 0;
-                if(mVal === '-') mVal = 0;
-                let mySum = (state.board[3]?.card.stats[d]||0) + (state.board[5]?.card.stats[d]||0);
-                let oppSum = (state.board[2]?.card.stats[d]||0) + (state.board[4]?.card.stats[d]||0) + (state.board[6]?.card.stats[d]||0);
-                myScore += mVal * mySum;
-                oppScore += mVal * oppSum;
-                calcLog += `${DIM_NAMES[d]}(${mVal}×${mySum}) + `;
-            }
-        }
+    for (let d of calcDims) {
+        let mVal = (mainCard && mainCard.stats[d] !== '-') ? mainCard.stats[d] : 0;
+        let mySum = (state.board[3]?.card.stats[d]||0) + (state.board[5]?.card.stats[d]||0);
+        let oppSum = (state.board[2]?.card.stats[d]||0) + (state.board[4]?.card.stats[d]||0) + (state.board[6]?.card.stats[d]||0);
+        myScore += mVal * mySum; oppScore += mVal * oppSum;
+        calcLog += `${DIM_NAMES[d]}(${mVal}×${mySum}) + `;
     }
+    myScore = Math.max(0, myScore); oppScore = Math.max(0, oppScore);
+    log(`计算: ${calcLog.slice(0, -3)}`, "highlight");
+    log(`你: ${myScore} | 对手: ${oppScore}`, "highlight");
 
-    myScore = Math.max(0, myScore);
-    oppScore = Math.max(0, oppScore);
-
-    log(`公式计算: ${calcLog.slice(0, -3)}`, "highlight");
-    log(`你的得分：${myScore} | 对手得分：${oppScore}`, "highlight");
-
-    if (myScore > oppScore) {
-        state.myScore++;
-        log("你赢得了本回合！", "success");
-    } else if (oppScore > myScore) {
-        state.oppScore++;
-        log("对手赢得了本回合！", "danger");
-    } else {
-        state.myScore++;
-        state.oppScore++;
-        log("平局！双方各得1分。");
-    }
+    if (myScore > oppScore) { state.myScore++; log("你赢了本回合！", "success"); }
+    else if (oppScore > myScore) { state.oppScore++; log("对手赢了本回合！", "danger"); }
+    else { state.myScore++; state.oppScore++; log("平局！"); }
 
     document.getElementById('my-win-points').innerText = `胜点: ${state.myScore}`;
     document.getElementById('opp-win-points').innerText = `胜点: ${state.oppScore}`;
-
-    setTimeout(discardPhase, 1500);
+    
+    if(state.myScore >= 5 || state.oppScore >= 5) log("游戏结束！");
+    else setTimeout(discardPhase, 1500);
 }
 
-// --- 8. 弃牌与下一回合 ---
 function discardPhase() {
+    // 简化处理弃牌和保留 (暂未实现玩家主动选择)
     state.myDiscard.push(...state.myHand.splice(1));
     state.oppDiscard.push(...state.oppHand.splice(1));
-    document.getElementById('my-discard-count').innerText = `弃牌: ${state.myDiscard.length}`;
-    renderHands();
-    
-    if (state.myScore >= 5 || state.oppScore >= 5) {
-        if (state.myScore === state.oppScore) {
-            log("双方均达到5分，进入决胜回合！");
-        } else if (state.myScore >= 5) {
-            log("🎉 你获得了最终胜利！", "success");
-            document.getElementById('phase-info').innerText = "游戏结束";
-            return;
-        } else {
-            log("💀 对手获得了最终胜利！", "danger");
-            document.getElementById('phase-info').innerText = "游戏结束";
-            return;
-        }
-    }
-    state.round++;
-    startRound();
+    state.round++; startRound();
 }
 
-// --- 9. 渲染 UI ---
+// --- 渲染 UI ---
 function renderBoard() {
     document.querySelectorAll('.slot').forEach(slot => {
         let pos = parseInt(slot.dataset.pos);
         let data = state.board[pos];
-        if (data) {
-            slot.innerHTML = createCardHTML(data.card, data.faceUp, true);
-        }
+        if (data) slot.innerHTML = createCardHTML(data.card, data.faceUp, true);
     });
 }
 
@@ -328,14 +280,13 @@ function renderHands() {
         el.innerHTML = createCardHTML({name: "未知"}, false, false);
         oppHandDiv.appendChild(el.firstChild);
     });
-
     document.getElementById('my-deck-count').innerText = `牌库: ${state.myDeck.length}`;
     document.getElementById('opp-deck-count').innerText = `牌库: ${state.oppDeck.length}`;
+    document.getElementById('my-discard-count').innerText = `弃牌: ${state.myDiscard.length}`;
 }
 
 function createCardHTML(card, faceUp, inSlot) {
     if (!faceUp) return `<div class="card face-down ${inSlot?'in-slot':''}"></div>`;
-    
     let stats = card.stats || {};
     return `
     <div class="card ${inSlot?'in-slot':''}">
@@ -352,8 +303,12 @@ function createCardHTML(card, faceUp, inSlot) {
 }
 
 function drawPhase() {
-    while (state.myHand.length < 5 && state.myDeck.length > 0) state.myHand.push(state.myDeck.pop());
-    while (state.oppHand.length < 5 && state.oppDeck.length > 0) state.oppHand.push(state.oppDeck.pop());
+    while (state.myHand.length < 5 && state.myDeck.length > 0) {
+        let c = state.myDeck.pop(); state.myHand.push(c); runEffect(c, "onDraw");
+    }
+    while (state.oppHand.length < 5 && state.oppDeck.length > 0) {
+        let c = state.oppDeck.pop(); state.oppHand.push(c); runEffect(c, "onDraw");
+    }
 }
 
 function log(msg, type = "") {
@@ -364,5 +319,4 @@ function log(msg, type = "") {
     document.getElementById('log-content').scrollTop = document.getElementById('log-content').scrollHeight;
 }
 
-// 启动入口修改
 window.onload = loadDataAndStart;
